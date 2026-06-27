@@ -73,12 +73,18 @@ struct SettingsDetailView: View {
                 }
             ))
 
-            Picker(L(.language, language), selection: $language) {
-                ForEach(AppLanguage.allCases) { appLanguage in
-                    Text(appLanguage.title).tag(appLanguage.rawValue)
+            HStack(spacing: 12) {
+                Text(L(.language, language))
+
+                Picker("", selection: $language) {
+                    ForEach(AppLanguage.allCases) { appLanguage in
+                        Text(appLanguage.title).tag(appLanguage.rawValue)
+                    }
                 }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 150)
             }
-            .pickerStyle(.menu)
         }
         .font(.system(size: 13))
     }
