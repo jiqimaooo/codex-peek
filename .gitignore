@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+*.swp
+*.swo
+
+# SwiftPM / Xcode 构建产物
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+
+# 发布产物
+dist/
+*.app
+*.dmg
+*.zip
+*.icns
+*.iconset/
+
+# 本地编辑器配置
+.vscode/
+.idea/
+
+# 本地敏感文件，不能提交真实 Codex/OpenAI 凭证
+.env
+.env.*
+auth.json
+*.pem
+*.p12
+*.mobileprovision
+*.provisionprofile
+

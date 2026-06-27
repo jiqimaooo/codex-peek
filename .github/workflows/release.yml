@@ -1,0 +1,50 @@
+name: Build Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build DMG
+        run: ./scripts/package_release.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Codex Peek
+          path: dist/releases/Codex Peek.dmg
+
+      - name: Update latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f latest "$GITHUB_SHA"
+          git push -f origin latest
+
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest \
+              --title "Codex Peek 最新版" \
+              --notes "这是由 GitHub Actions 自动生成的最新安装包。"
+          else
+            gh release create latest \
+              --title "Codex Peek 最新版" \
+              --notes "这是由 GitHub Actions 自动生成的最新安装包。" \
+              --latest
+          fi
+
+          gh release upload latest "dist/releases/Codex Peek.dmg" --clobber
