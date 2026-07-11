@@ -75,11 +75,11 @@ jobs:
 
           if gh release view latest >/dev/null 2>&1; then
             gh release edit latest \
-              --title "Codex Peek 最新版 v${VERSION}" \
+              --title "v${VERSION}" \
               --notes "当前最新版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。"
           else
             gh release create latest \
-              --title "Codex Peek 最新版 v${VERSION}" \
+              --title "v${VERSION}" \
               --notes "当前最新版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。" \
               --latest
           fi
