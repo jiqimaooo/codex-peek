@@ -2,14 +2,17 @@ import SwiftUI
 
 struct MenuBarLabelView: View {
     let state: UsageState
-    @AppStorage("appLanguage") private var language = AppLanguage.chinese.rawValue
 
     var body: some View {
         HStack(spacing: 5) {
             CodexMarkIcon(size: 16)
-            Text(labelText)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .monospacedDigit()
+            VStack(alignment: .leading, spacing: 0) {
+                Text("5H: \(fiveHourText)")
+                Text("7D: \(weeklyText)")
+            }
+            .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+            .monospacedDigit()
+            .lineLimit(1)
         }
         .foregroundStyle(.primary)
         .padding(.horizontal, 6)
@@ -18,14 +21,23 @@ struct MenuBarLabelView: View {
 
     private var usage: CodexUsage? { state.latestUsage }
 
-    private var labelText: String {
+    private var fiveHourText: String {
         if let remainingPercent = usage?.fiveHour.remainingPercent {
-            return "\(L(.fiveHourRemainingShort, language)): \(Int(remainingPercent.rounded()))%"
+            return "\(Int(remainingPercent.rounded()))%"
         }
         if state.isLoading {
-            return "\(L(.fiveHourRemainingShort, language)): --"
+            return "--"
         }
-        return "\(L(.fiveHourRemainingShort, language)): !"
+        return "!"
     }
 
+    private var weeklyText: String {
+        if let remainingPercent = usage?.weekly.remainingPercent {
+            return "\(Int(remainingPercent.rounded()))%"
+        }
+        if state.isLoading {
+            return "--"
+        }
+        return "!"
+    }
 }
