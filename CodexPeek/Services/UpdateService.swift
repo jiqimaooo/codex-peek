@@ -21,65 +21,42 @@ class UpdateService: NSObject, ObservableObject, URLSessionDownloadDelegate {
         self.session = URLSession(configuration: .default, delegate: self, delegateQueue: .main)
     }
 
+    struct RemoteVersionInfo: Decodable {
+        let version: String
+        let build: String
+    }
+
     func checkForUpdates(silent: Bool = false) async {
         if !silent {
             state = .checking
         }
 
-        let plistURL = URL(string: "https://raw.githubusercontent.com/jiqimaooo/codex-peek/main/CodexPeek/App/Info.plist")!
-        // GitHub API: 获取 main 分支最新 commit 的 SHA，用 per_page=1 + Link header 中的 last page 来推算总 commit 数
-        let commitsURL = URL(string: "https://api.github.com/repos/jiqimaooo/codex-peek/commits?sha=main&per_page=1")!
-
+        let versionURL = URL(string: "https://github.com/jiqimaooo/codex-peek/releases/download/latest/version.json")!
+        
         do {
-            // 1. 获取远程 Info.plist 中的版本号
-            let (plistData, plistResponse) = try await URLSession.shared.data(from: plistURL)
-            guard let plistHttp = plistResponse as? HTTPURLResponse, plistHttp.statusCode == 200 else {
+            let (data, response) = try await URLSession.shared.data(from: versionURL)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 throw NSError(
                     domain: "UpdateService",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to download remote Info.plist"]
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to download remote version.json (Status \((response as? HTTPURLResponse)?.statusCode ?? 0))"]
                 )
             }
 
-            guard let plist = try PropertyListSerialization.propertyList(from: plistData, options: [], format: nil) as? [String: Any] else {
-                throw NSError(
-                    domain: "UpdateService",
-                    code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to parse remote Info.plist"]
-                )
-            }
-
-            let remoteVersion = plist["CFBundleShortVersionString"] as? String ?? "1.0.0"
-
-            // 2. 获取远程 commit 总数作为构建号
-            var commitRequest = URLRequest(url: commitsURL)
-            commitRequest.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
-            let (_, commitsResponse) = try await URLSession.shared.data(for: commitRequest)
-
-            var remoteBuild = "0"
-            if let commitsHttp = commitsResponse as? HTTPURLResponse,
-               let linkHeader = commitsHttp.value(forHTTPHeaderField: "Link") {
-                // 解析 Link header 中 rel="last" 的 page 参数，即为总 commit 数
-                if let lastMatch = linkHeader.range(of: #"page=(\d+)>; rel="last""#, options: .regularExpression) {
-                    let matched = String(linkHeader[lastMatch])
-                    if let numRange = matched.range(of: #"\d+"#, options: .regularExpression) {
-                        remoteBuild = String(matched[numRange])
-                    }
-                }
-            }
+            let remoteInfo = try JSONDecoder().decode(RemoteVersionInfo.self, from: data)
 
             let localVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
             let localBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
 
             let hasUpdate = isRemoteVersionNewer(
-                remoteVersion: remoteVersion,
-                remoteBuild: remoteBuild,
+                remoteVersion: remoteInfo.version,
+                remoteBuild: remoteInfo.build,
                 localVersion: localVersion,
                 localBuild: localBuild
             )
 
             if hasUpdate {
-                state = .updateAvailable(version: remoteVersion, build: remoteBuild)
+                state = .updateAvailable(version: remoteInfo.version, build: remoteInfo.build)
             } else {
                 state = .noUpdateAvailable
             }

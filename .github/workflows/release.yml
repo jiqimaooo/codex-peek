@@ -60,7 +60,8 @@ jobs:
               --notes "版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。" \
               --latest=false
           fi
-          gh release upload "$TAG" "dist/releases/Codex Peek.dmg" --clobber
+          echo "{\"version\": \"$VERSION\", \"build\": \"$BUILD\"}" > dist/releases/version.json
+          gh release upload "$TAG" "dist/releases/Codex Peek.dmg" "dist/releases/version.json" --clobber
 
       - name: Update latest release
         env:
@@ -84,5 +85,6 @@ jobs:
               --latest
           fi
 
-          gh release upload latest "dist/releases/Codex Peek.dmg" --clobber
+          echo "{\"version\": \"$VERSION\", \"build\": \"$BUILD\"}" > dist/releases/version.json
+          gh release upload latest "dist/releases/Codex Peek.dmg" "dist/releases/version.json" --clobber
 
