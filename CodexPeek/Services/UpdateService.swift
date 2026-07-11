@@ -27,10 +27,13 @@ class UpdateService: NSObject, ObservableObject, URLSessionDownloadDelegate {
         }
 
         let plistURL = URL(string: "https://raw.githubusercontent.com/jiqimaooo/codex-peek/main/CodexPeek/App/Info.plist")!
-        
+        // GitHub API: 获取 main 分支最新 commit 的 SHA，用 per_page=1 + Link header 中的 last page 来推算总 commit 数
+        let commitsURL = URL(string: "https://api.github.com/repos/jiqimaooo/codex-peek/commits?sha=main&per_page=1")!
+
         do {
-            let (data, response) = try await URLSession.shared.data(from: plistURL)
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            // 1. 获取远程 Info.plist 中的版本号
+            let (plistData, plistResponse) = try await URLSession.shared.data(from: plistURL)
+            guard let plistHttp = plistResponse as? HTTPURLResponse, plistHttp.statusCode == 200 else {
                 throw NSError(
                     domain: "UpdateService",
                     code: 1,
@@ -38,7 +41,7 @@ class UpdateService: NSObject, ObservableObject, URLSessionDownloadDelegate {
                 )
             }
 
-            guard let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] else {
+            guard let plist = try PropertyListSerialization.propertyList(from: plistData, options: [], format: nil) as? [String: Any] else {
                 throw NSError(
                     domain: "UpdateService",
                     code: 2,
@@ -47,7 +50,23 @@ class UpdateService: NSObject, ObservableObject, URLSessionDownloadDelegate {
             }
 
             let remoteVersion = plist["CFBundleShortVersionString"] as? String ?? "1.0.0"
-            let remoteBuild = plist["CFBundleVersion"] as? String ?? "1"
+
+            // 2. 获取远程 commit 总数作为构建号
+            var commitRequest = URLRequest(url: commitsURL)
+            commitRequest.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+            let (_, commitsResponse) = try await URLSession.shared.data(for: commitRequest)
+
+            var remoteBuild = "0"
+            if let commitsHttp = commitsResponse as? HTTPURLResponse,
+               let linkHeader = commitsHttp.value(forHTTPHeaderField: "Link") {
+                // 解析 Link header 中 rel="last" 的 page 参数，即为总 commit 数
+                if let lastMatch = linkHeader.range(of: #"page=(\d+)>; rel="last""#, options: .regularExpression) {
+                    let matched = String(linkHeader[lastMatch])
+                    if let numRange = matched.range(of: #"\d+"#, options: .regularExpression) {
+                        remoteBuild = String(matched[numRange])
+                    }
+                }
+            }
 
             let localVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
             let localBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"

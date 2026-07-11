@@ -29,6 +29,11 @@ cp "CodexPeek/App/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 install -m 755 ".build/release/CodexPeek" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 cp "$ICON_FILE" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 
+# 自动注入构建号：使用 git 提交总数作为 CFBundleVersion
+BUILD_NUMBER=$(git rev-list --count HEAD)
+echo "自动构建号: $BUILD_NUMBER"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP_BUNDLE/Contents/Info.plist"
+
 echo "本地签名 App..."
 codesign --force --deep --sign - "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
