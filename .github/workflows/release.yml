@@ -17,9 +17,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Build DMG
         run: ./scripts/package_release.sh
+
+      - name: Extract version info
+        id: version
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" CodexPeek/App/Info.plist)
+          BUILD=$(git rev-list --count HEAD)
+          TAG="v${VERSION}-${BUILD}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "版本号: $VERSION  构建号: $BUILD  Tag: $TAG"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -27,24 +40,49 @@ jobs:
           name: Codex Peek
           path: dist/releases/Codex Peek.dmg
 
+      - name: Create versioned release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD="${{ steps.version.outputs.build }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 创建带版本号的 release（如果 tag 已存在则跳过）
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "$TAG"
+            gh release create "$TAG" \
+              --title "Codex Peek v${VERSION} (Build ${BUILD})" \
+              --notes "版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。" \
+              --latest=false
+          fi
+          gh release upload "$TAG" "dist/releases/Codex Peek.dmg" --clobber
+
       - name: Update latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD="${{ steps.version.outputs.build }}"
+
           git tag -f latest "$GITHUB_SHA"
           git push -f origin latest
 
           if gh release view latest >/dev/null 2>&1; then
             gh release edit latest \
-              --title "Codex Peek 最新版" \
-              --notes "这是由 GitHub Actions 自动生成的最新安装包。"
+              --title "Codex Peek 最新版 v${VERSION}" \
+              --notes "当前最新版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。"
           else
             gh release create latest \
-              --title "Codex Peek 最新版" \
-              --notes "这是由 GitHub Actions 自动生成的最新安装包。" \
+              --title "Codex Peek 最新版 v${VERSION}" \
+              --notes "当前最新版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。" \
               --latest
           fi
 
           gh release upload latest "dist/releases/Codex Peek.dmg" --clobber
+
