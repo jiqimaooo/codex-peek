@@ -88,6 +88,20 @@ enum LocalizedText {
         case (.appDescription, .english): return "A macOS menu bar utility for checking real Codex usage and remaining quota."
         case (.refreshEvery(let minutes), .chinese): return "最短间隔 \(minutes) 分钟"
         case (.refreshEvery(let minutes), .english): return "Minimum interval \(minutes) min"
+        case (.update, .chinese): return "检查更新"
+        case (.update, .english): return "Check for Updates"
+        case (.checkingForUpdates, .chinese): return "正在检查更新..."
+        case (.checkingForUpdates, .english): return "Checking for updates..."
+        case (.updateAvailable(let version), .chinese): return "有新版本 \(version)"
+        case (.updateAvailable(let version), .english): return "New version \(version)"
+        case (.noUpdateAvailable, .chinese): return "已是最新版本"
+        case (.noUpdateAvailable, .english): return "Up to date"
+        case (.downloadingUpdate(let progress), .chinese): return "正在下载 \(progress)"
+        case (.downloadingUpdate(let progress), .english): return "Downloading \(progress)"
+        case (.installingUpdate, .chinese): return "正在安装更新..."
+        case (.installingUpdate, .english): return "Installing update..."
+        case (.updateError(let error), .chinese): return "更新失败: \(error)"
+        case (.updateError(let error), .english): return "Update failed: \(error)"
         }
     }
 
@@ -124,7 +138,13 @@ enum LocalizedText {
         case author
         case appDescription
         case refreshEvery(String)
-
+        case update
+        case checkingForUpdates
+        case updateAvailable(String)
+        case noUpdateAvailable
+        case downloadingUpdate(String)
+        case installingUpdate
+        case updateError(String)
     }
 }
 
