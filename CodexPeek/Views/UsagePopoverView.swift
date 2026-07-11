@@ -89,7 +89,7 @@ struct UsagePopoverView: View {
     @ViewBuilder
     private var updateStatusView: some View {
         switch updateService.state {
-        case .idle:
+        case .idle, .updateAvailable:
             EmptyView()
         case .checking:
             HStack(spacing: 8) {
@@ -98,19 +98,6 @@ struct UsagePopoverView: View {
                 Text(L(.checkingForUpdates, language))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-            }
-        case .updateAvailable(let version, _):
-            HStack {
-                Image(systemName: "arrow.down.circle.fill")
-                    .foregroundStyle(.blue)
-                Text(L(.updateAvailable(version), language))
-                    .font(.system(size: 11))
-                Spacer()
-                Button(L(.update, language)) {
-                    updateService.startUpdate()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
             }
         case .noUpdateAvailable:
             if showUpToDateMessage {
@@ -152,7 +139,7 @@ struct UsagePopoverView: View {
     }
 
     private var bottomBar: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             Button(L(.quit, language)) {
                 NSApp.terminate(nil)
             }
@@ -160,7 +147,21 @@ struct UsagePopoverView: View {
 
             Spacer()
 
-            updateButton
+            if case .updateAvailable = updateService.state {
+                Button {
+                    updateService.startUpdate()
+                } label: {
+                    Text(L(.update, language))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 5)
+                        .background(Color.blue, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
 
             Button {
                 SettingsWindowService.show(refreshService: refreshService)
@@ -171,63 +172,6 @@ struct UsagePopoverView: View {
             .help(L(.settings, language))
         }
         .font(.system(size: 12))
-    }
-
-    private var updateButton: some View {
-        Button {
-            triggerUpdateAction()
-        } label: {
-            updateButtonIcon
-        }
-        .buttonStyle(.borderless)
-        .disabled(isUpdateActionDisabled)
-        .help(L(.update, language))
-    }
-
-    private var updateButtonIcon: some View {
-        Group {
-            switch updateService.state {
-            case .idle, .noUpdateAvailable:
-                Image(systemName: "arrow.down.circle")
-            case .checking:
-                Image(systemName: "arrow.triangle.2.circlepath")
-            case .updateAvailable:
-                Image(systemName: "arrow.down.circle.fill")
-                    .foregroundStyle(.blue)
-            case .downloading:
-                Image(systemName: "arrow.down.circle.fill")
-                    .foregroundStyle(.secondary)
-            case .installing:
-                Image(systemName: "arrow.down.circle.fill")
-            case .error:
-                Image(systemName: "exclamationmark.circle")
-                    .foregroundStyle(.red)
-            }
-        }
-    }
-
-    private var isUpdateActionDisabled: Bool {
-        switch updateService.state {
-        case .checking, .downloading, .installing:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func triggerUpdateAction() {
-        switch updateService.state {
-        case .updateAvailable:
-            updateService.startUpdate()
-        default:
-            showUpToDateMessage = true
-            Task {
-                await updateService.checkForUpdates()
-                // Hide up-to-date message after 3 seconds
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                showUpToDateMessage = false
-            }
-        }
     }
 
     private func detailRow(title: String, value: String) -> some View {
