@@ -75,15 +75,12 @@ jobs:
           git push -f origin latest
 
           if gh release view latest >/dev/null 2>&1; then
-            gh release edit latest \
-              --title "v${VERSION}" \
-              --notes "当前最新版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。"
-          else
-            gh release create latest \
-              --title "v${VERSION}" \
-              --notes "当前最新版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。" \
-              --latest
+            gh release delete latest -y
           fi
+          gh release create latest \
+            --title "v${VERSION}" \
+            --notes "当前最新版本 **v${VERSION}** (构建号 ${BUILD})，由 GitHub Actions 自动生成。" \
+            --latest
 
           echo "{\"version\": \"$VERSION\", \"build\": \"$BUILD\"}" > dist/releases/version.json
           gh release upload latest "dist/releases/Codex Peek.dmg" "dist/releases/version.json" --clobber
