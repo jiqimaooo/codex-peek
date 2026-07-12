@@ -104,7 +104,10 @@ struct SettingsDetailView: View {
 
     private var appInfoSection: some View {
         HStack(spacing: 12) {
-            CodexMarkIcon(size: 38)
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 57, height: 57)
             
             VStack(alignment: .leading, spacing: 3) {
                 Text("Codex Peek")
