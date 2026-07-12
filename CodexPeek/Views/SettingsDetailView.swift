@@ -8,137 +8,155 @@ struct SettingsDetailView: View {
     @State private var launchError: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             appInfoSection
 
-            Divider()
+            VStack(spacing: 12) {
+                // 偏好与展示卡片组
+                VStack(alignment: .leading, spacing: 10) {
+                    settingRow(icon: "percent", title: L(.displayMode, language)) {
+                        Picker("", selection: $displayMode) {
+                            ForEach(DisplayMode.allCases) { mode in
+                                Text(mode.title(language: language)).tag(mode.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 120)
+                    }
+                    
+                    Divider()
+                        .opacity(0.5)
+                    
+                    settingRow(icon: "globe", title: L(.language, language)) {
+                        Picker("", selection: $language) {
+                            ForEach(AppLanguage.allCases) { appLanguage in
+                                Text(appLanguage.title).tag(appLanguage.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 120)
+                    }
+                }
+                .padding(12)
+                .background(Color(nsColor: .controlBackgroundColor).opacity(0.6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.primary.opacity(0.06), lineWidth: 1))
 
-            settingsSection
+                // 运行与刷新卡片组
+                VStack(alignment: .leading, spacing: 10) {
+                    settingRow(icon: "arrow.triangle.2.circlepath", title: L(.autoRefresh, language)) {
+                        Toggle("", isOn: Binding(
+                            get: { refreshService.autoRefreshEnabled },
+                            set: { newValue in
+                                refreshService.autoRefreshEnabled = newValue
+                                refreshService.restartAutoRefresh()
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                    }
+                    
+                    Divider()
+                        .opacity(0.5)
+
+                    
+                    settingRow(icon: "play.circle", title: L(.launchAtLogin, language)) {
+                        Toggle("", isOn: Binding(
+                            get: { launchAtLoginEnabled },
+                            set: { newValue in
+                                do {
+                                    try LaunchAtLoginService().setEnabled(newValue)
+                                    launchAtLoginEnabled = newValue
+                                    launchError = nil
+                                } catch {
+                                    launchAtLoginEnabled = LaunchAtLoginService().isEnabled
+                                    launchError = error.localizedDescription
+                                }
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                    }
+                }
+                .padding(12)
+                .background(Color(nsColor: .controlBackgroundColor).opacity(0.6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.primary.opacity(0.06), lineWidth: 1))
+            }
 
             if let launchError {
                 Text(launchError)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundStyle(AppColors.quotaRed)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            aboutSection
+            Spacer(minLength: 0)
+
+            footerSection
         }
-        .padding(22)
-        .frame(minWidth: 420, minHeight: 360)
+        .padding(20)
+        .frame(minWidth: 420, minHeight: 380)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var appInfoSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Codex Peek")
-                .font(.system(size: 22, weight: .semibold))
-            Text(L(.appDescription, language))
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-            detailRow(title: L(.dataSource, language), value: "~/.codex/auth.json + OpenAI Codex Usage API")
-        }
-    }
-
-    private var settingsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(L(.autoRefresh, language), isOn: Binding(
-                get: { refreshService.autoRefreshEnabled },
-                set: { newValue in
-                    refreshService.autoRefreshEnabled = newValue
-                    refreshService.restartAutoRefresh()
-                }
-            ))
-
-            Stepper(
-                L(.refreshEvery("\(Int(refreshService.refreshIntervalSeconds / 60))"), language),
-                value: Binding(
-                    get: { refreshService.refreshIntervalSeconds },
-                    set: { refreshService.setRefreshIntervalSeconds($0) }
-                ),
-                in: UsageRefreshService.minimumRefreshIntervalSeconds...UsageRefreshService.maximumRefreshIntervalSeconds,
-                step: 60
-            )
-
-            Toggle(L(.launchAtLogin, language), isOn: Binding(
-                get: { launchAtLoginEnabled },
-                set: { newValue in
-                    do {
-                        try LaunchAtLoginService().setEnabled(newValue)
-                        launchAtLoginEnabled = newValue
-                        launchError = nil
-                    } catch {
-                        launchAtLoginEnabled = LaunchAtLoginService().isEnabled
-                        launchError = error.localizedDescription
-                    }
-                }
-            ))
-
-            HStack(spacing: 12) {
-                Text(L(.displayMode, language))
-
-                Picker("", selection: $displayMode) {
-                    ForEach(DisplayMode.allCases) { mode in
-                        Text(mode.title(language: language)).tag(mode.rawValue)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(width: 150)
-            }
-
-            HStack(spacing: 12) {
-                Text(L(.language, language))
-
-                Picker("", selection: $language) {
-                    ForEach(AppLanguage.allCases) { appLanguage in
-                        Text(appLanguage.title).tag(appLanguage.rawValue)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(width: 150)
+        HStack(spacing: 12) {
+            CodexMarkIcon(size: 38)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Codex Peek")
+                    .font(.system(size: 18, weight: .bold))
+                Text(L(.appDescription, language))
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
             }
         }
-        .font(.system(size: 13))
+        .padding(.vertical, 2)
     }
 
-    private var aboutSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private var footerSection: some View {
+        VStack(spacing: 6) {
             Divider()
-                .padding(.top, 2)
-
-            Text(L(.about, language))
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            detailRow(title: L(.version, language), value: appVersion)
-            linkRow(title: L(.author, language), label: "GitHub", url: URL(string: "https://github.com/jiqimaooo/codex-peek")!)
+                .opacity(0.6)
+            
+            HStack {
+                Text(L(.version, language) + ": " + appVersion)
+                    .foregroundStyle(.secondary)
+                
+                Spacer()
+                
+                Text(L(.dataSource, language) + ": auth.json")
+                    .foregroundStyle(.secondary)
+                
+                Text("|")
+                    .foregroundStyle(.tertiary)
+                
+                Link("GitHub", destination: URL(string: "https://github.com/jiqimaooo/codex-peek")!)
+                    .help(L(.openSourceProject, language))
+            }
+            .font(.system(size: 11))
+            .padding(.top, 2)
         }
     }
 
-    private func linkRow(title: String, label: String, url: URL) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
+    private func settingRow<Content: View>(icon: String, title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
-            Spacer(minLength: 12)
-            Link(label, destination: url)
-                .multilineTextAlignment(.trailing)
-                .help(L(.openSourceProject, language))
-        }
-        .font(.system(size: 12))
-    }
-
-    private func detailRow(title: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+                .frame(width: 18, alignment: .center)
+            
             Text(title)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 12)
-            Text(value)
-                .multilineTextAlignment(.trailing)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.primary)
+            
+            Spacer()
+            
+            content()
         }
-        .font(.system(size: 12))
     }
 
     private var appVersion: String {

@@ -19,7 +19,7 @@ enum SettingsWindowService {
         let newWindow = NSWindow(contentViewController: controller)
         newWindow.title = L(.settings, language)
         newWindow.styleMask = [.titled, .closable, .miniaturizable]
-        newWindow.setContentSize(NSSize(width: 420, height: 360))
+        newWindow.setContentSize(NSSize(width: 420, height: 380))
         newWindow.center()
         newWindow.isReleasedWhenClosed = false
         window = newWindow
