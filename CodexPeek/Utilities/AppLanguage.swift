@@ -88,8 +88,8 @@ enum LocalizedText {
         case (.appDescription, .english): return "A macOS menu bar utility for checking real Codex usage and remaining quota."
         case (.refreshEvery(let minutes), .chinese): return "最短间隔 \(minutes) 分钟"
         case (.refreshEvery(let minutes), .english): return "Minimum interval \(minutes) min"
-        case (.update, .chinese): return "检查更新"
-        case (.update, .english): return "Check for Updates"
+        case (.update, .chinese): return "更新"
+        case (.update, .english): return "Update"
         case (.checkingForUpdates, .chinese): return "正在检查更新..."
         case (.checkingForUpdates, .english): return "Checking for updates..."
         case (.updateAvailable(let version), .chinese): return "有新版本 \(version)"
@@ -102,6 +102,12 @@ enum LocalizedText {
         case (.installingUpdate, .english): return "Installing update..."
         case (.updateError(let error), .chinese): return "更新失败: \(error)"
         case (.updateError(let error), .english): return "Update failed: \(error)"
+        case (.displayMode, .chinese): return "用量展示"
+        case (.displayMode, .english): return "Display Mode"
+        case (.displayModeUsage, .chinese): return "使用量"
+        case (.displayModeUsage, .english): return "Usage"
+        case (.displayModeRemaining, .chinese): return "剩余量"
+        case (.displayModeRemaining, .english): return "Remaining"
         }
     }
 
@@ -145,9 +151,28 @@ enum LocalizedText {
         case downloadingUpdate(String)
         case installingUpdate
         case updateError(String)
+        case displayMode
+        case displayModeUsage
+        case displayModeRemaining
     }
 }
 
 func L(_ key: LocalizedText.Key, _ language: String) -> String {
     LocalizedText.text(key, language: language)
+}
+
+enum DisplayMode: String, CaseIterable, Identifiable {
+    case usage
+    case remaining
+
+    var id: String { rawValue }
+
+    func title(language: String) -> String {
+        switch self {
+        case .usage:
+            return L(.displayModeUsage, language)
+        case .remaining:
+            return L(.displayModeRemaining, language)
+        }
+    }
 }

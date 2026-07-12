@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsDetailView: View {
     @ObservedObject var refreshService: UsageRefreshService
     @AppStorage("appLanguage") private var language = AppLanguage.chinese.rawValue
+    @AppStorage("displayMode") private var displayMode = DisplayMode.usage.rawValue
     @State private var launchAtLoginEnabled = LaunchAtLoginService().isEnabled
     @State private var launchError: String?
 
@@ -72,6 +73,19 @@ struct SettingsDetailView: View {
                     }
                 }
             ))
+
+            HStack(spacing: 12) {
+                Text(L(.displayMode, language))
+
+                Picker("", selection: $displayMode) {
+                    ForEach(DisplayMode.allCases) { mode in
+                        Text(mode.title(language: language)).tag(mode.rawValue)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 150)
+            }
 
             HStack(spacing: 12) {
                 Text(L(.language, language))

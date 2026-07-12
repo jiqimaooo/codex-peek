@@ -152,15 +152,13 @@ struct UsagePopoverView: View {
                     updateService.startUpdate()
                 } label: {
                     Text(L(.update, language))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3.5)
                         .background(Color.blue, in: Capsule())
                 }
                 .buttonStyle(.plain)
-
-                Spacer()
             }
 
             Button {

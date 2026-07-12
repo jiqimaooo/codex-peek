@@ -3,10 +3,11 @@ import SwiftUI
 struct ProgressBarView: View {
     let progress: Double
     let status: LimitStatus
+    let alignment: Alignment
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .leading) {
+            ZStack(alignment: alignment) {
                 Capsule()
                     .fill(Color.primary.opacity(0.10))
                 Capsule()

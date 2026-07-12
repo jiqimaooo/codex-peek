@@ -3,6 +3,7 @@ import SwiftUI
 struct UsageCardView: View {
     let window: UsageWindow
     let language: String
+    @AppStorage("displayMode") private var displayMode = DisplayMode.usage.rawValue
 
     var body: some View {
         GroupBox {
@@ -11,12 +12,16 @@ struct UsageCardView: View {
                     Text(title)
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
-                    Text("\(Int(window.usedPercent.rounded()))%")
+                    Text("\(displayPercent)%")
                         .font(.system(size: 24, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                 }
 
-                ProgressBarView(progress: window.normalizedProgress, status: window.status)
+                ProgressBarView(
+                    progress: displayProgress,
+                    status: window.status,
+                    alignment: displayMode == DisplayMode.remaining.rawValue ? .trailing : .leading
+                )
 
                 VStack(spacing: 8) {
                     detailRow(title: L(.usedTotal, language), value: window.totalDescription)
@@ -28,12 +33,39 @@ struct UsageCardView: View {
         .groupBoxStyle(.automatic)
     }
 
+    private var displayPercent: Int {
+        if displayMode == DisplayMode.remaining.rawValue {
+            return Int(window.remainingPercent.rounded())
+        } else {
+            return Int(window.usedPercent.rounded())
+        }
+    }
+
+    private var displayProgress: Double {
+        if displayMode == DisplayMode.remaining.rawValue {
+            return 1.0 - window.normalizedProgress
+        } else {
+            return window.normalizedProgress
+        }
+    }
+
     private var title: String {
+        let isChinese = language == AppLanguage.chinese.rawValue
+        let isRemaining = displayMode == DisplayMode.remaining.rawValue
+
         switch window.kind {
         case .fiveHours:
-            return L(.fiveHourUsage, language)
+            if isRemaining {
+                return isChinese ? "5 h剩余" : "5H LEFT"
+            } else {
+                return isChinese ? "5h 用量" : "5H USAGE"
+            }
         case .weekly:
-            return L(.weeklyUsage, language)
+            if isRemaining {
+                return isChinese ? "7 d 剩余" : "7D LEFT"
+            } else {
+                return isChinese ? "7d 用量" : "7D USAGE"
+            }
         }
     }
 

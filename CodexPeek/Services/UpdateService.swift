@@ -31,15 +31,39 @@ class UpdateService: NSObject, ObservableObject, URLSessionDownloadDelegate {
             state = .checking
         }
 
-        let versionURL = URL(string: "https://github.com/jiqimaooo/codex-peek/releases/download/latest/version.json")!
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let versionURL = URL(string: "https://github.com/jiqimaooo/codex-peek/releases/download/latest/version.json?t=\(timestamp)")!
         
+        let logURL = URL(fileURLWithPath: "/tmp/codex_peek_update.log")
+        let appendLog = { (message: String) in
+            let timeStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .medium)
+            let logLine = "[\(timeStr)] \(message)\n"
+            if let data = logLine.data(using: .utf8) {
+                if let fileHandle = try? FileHandle(forWritingTo: logURL) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write(data)
+                    fileHandle.closeFile()
+                } else {
+                    try? data.write(to: logURL)
+                }
+            }
+        }
+
+        appendLog("----- Check Update Started (silent: \(silent)) -----")
+        appendLog("Requesting URL: \(versionURL.absoluteString)")
+
         do {
-            let (data, response) = try await URLSession.shared.data(from: versionURL)
+            var request = URLRequest(url: versionURL)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                appendLog("Error: HTTP Status \(status)")
                 throw NSError(
                     domain: "UpdateService",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to download remote version.json (Status \((response as? HTTPURLResponse)?.statusCode ?? 0))"]
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to download remote version.json (Status \(status))"]
                 )
             }
 
@@ -55,12 +79,15 @@ class UpdateService: NSObject, ObservableObject, URLSessionDownloadDelegate {
                 localBuild: localBuild
             )
 
+            appendLog("Local: \(localVersion) (\(localBuild)) | Remote: \(remoteInfo.version) (\(remoteInfo.build)) | hasUpdate: \(hasUpdate)")
+
             if hasUpdate {
                 state = .updateAvailable(version: remoteInfo.version, build: remoteInfo.build)
             } else {
                 state = .noUpdateAvailable
             }
         } catch {
+            appendLog("Error occurred: \(error.localizedDescription)")
             if !silent {
                 state = .error(error.localizedDescription)
             }
