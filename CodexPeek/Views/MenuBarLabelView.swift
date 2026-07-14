@@ -22,20 +22,20 @@ struct MenuBarLabelView: View {
     private var usage: CodexUsage? { state.latestUsage }
 
     private var fiveHourText: String {
-        if let remainingPercent = usage?.fiveHour.remainingPercent {
+        if let remainingPercent = usage?.fiveHour?.remainingPercent {
             return "\(Int(remainingPercent.rounded()))%"
         }
-        if state.isLoading {
+        if usage != nil || state.isLoading {
             return "--"
         }
         return "!"
     }
 
     private var weeklyText: String {
-        if let remainingPercent = usage?.weekly.remainingPercent {
+        if let remainingPercent = usage?.weekly?.remainingPercent {
             return "\(Int(remainingPercent.rounded()))%"
         }
-        if state.isLoading {
+        if usage != nil || state.isLoading {
             return "--"
         }
         return "!"

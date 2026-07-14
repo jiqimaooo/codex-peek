@@ -3,9 +3,17 @@ import Foundation
 
 final class CodexActivityMonitor {
     private let callback: @Sendable () -> Void
+    private let overriddenCodexHomeURL: URL?
+    private let latency: CFTimeInterval
     private var stream: FSEventStreamRef?
 
-    init(callback: @escaping @Sendable () -> Void) {
+    init(
+        codexHomeURL: URL? = nil,
+        latency: CFTimeInterval = 3,
+        callback: @escaping @Sendable () -> Void
+    ) {
+        self.overriddenCodexHomeURL = codexHomeURL
+        self.latency = latency
         self.callback = callback
     }
 
@@ -35,7 +43,7 @@ final class CodexActivityMonitor {
             &context,
             [path] as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
-            3,
+            latency,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents)
                 | FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes)
         )
@@ -58,6 +66,9 @@ final class CodexActivityMonitor {
     }
 
     private var codexHomeURL: URL {
+        if let overriddenCodexHomeURL {
+            return overriddenCodexHomeURL
+        }
         let env = ProcessInfo.processInfo.environment
         if let codexHome = env["CODEX_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines), !codexHome.isEmpty {
             return URL(fileURLWithPath: codexHome, isDirectory: true)

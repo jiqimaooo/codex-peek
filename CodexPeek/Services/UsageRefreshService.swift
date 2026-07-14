@@ -17,8 +17,11 @@ final class UsageRefreshService: ObservableObject {
 
     private let provider: CodexUsageProvider
     private var refreshTask: Task<UsageState, Never>?
+    private var refreshID: UUID?
     private var activityRefreshTask: Task<Void, Never>?
     private var activityMonitor: CodexActivityMonitor?
+    private let authStore = AuthStore()
+    private var observedAccountIdentifier: String?
     private var lastActivityRefreshAt: Date?
 
     init(provider: CodexUsageProvider) {
@@ -27,6 +30,7 @@ final class UsageRefreshService: ObservableObject {
 
     func start() {
         normalizeRefreshInterval()
+        observedAccountIdentifier = authStore.currentAccountIdentifier()
         Task { await refresh() }
         restartAutoRefresh()
     }
@@ -40,25 +44,28 @@ final class UsageRefreshService: ObservableObject {
     func restartAutoRefresh() {
         activityRefreshTask?.cancel()
         activityMonitor?.stop()
-        guard autoRefreshEnabled else { return }
 
         normalizeRefreshInterval()
         let monitor = CodexActivityMonitor { [weak self] in
             Task { @MainActor [weak self] in
-                self?.scheduleActivityRefresh()
+                await self?.handleCodexActivity()
             }
         }
         activityMonitor = monitor
         monitor.start()
     }
 
-    func refresh() async {
+    func refresh(clearPrevious: Bool = false) async {
+        if clearPrevious {
+            invalidateCurrentRefresh()
+        }
         guard refreshTask == nil else { return }
 
-        let previous = state.latestUsage
+        let previous = clearPrevious ? nil : state.latestUsage
         state = .loading(previous: previous)
 
-        refreshTask = Task { [provider] in
+        let id = UUID()
+        let task = Task<UsageState, Never> { [provider] in
             do {
                 return .loaded(try await provider.fetchUsage())
             } catch let error as UsageError {
@@ -67,14 +74,24 @@ final class UsageRefreshService: ObservableObject {
                 return .failed(.network(error.localizedDescription), previous: previous)
             }
         }
+        refreshID = id
+        refreshTask = task
 
-        if let result = await refreshTask?.value {
-            state = result
-            if case .loaded = result {
-                lastActivityRefreshAt = Date()
-            }
+        let result = await task.value
+        guard refreshID == id else { return }
+
+        state = result
+        if case .loaded = result {
+            lastActivityRefreshAt = Date()
         }
         refreshTask = nil
+        refreshID = nil
+    }
+
+    func refreshAfterAccountChange() async {
+        activityRefreshTask?.cancel()
+        lastActivityRefreshAt = nil
+        await refresh(clearPrevious: true)
     }
 
     func setRefreshIntervalSeconds(_ value: Double) {
@@ -116,5 +133,23 @@ final class UsageRefreshService: ObservableObject {
             guard !Task.isCancelled else { return }
             await self?.refresh()
         }
+    }
+
+    private func handleCodexActivity() async {
+        let currentAccountIdentifier = authStore.currentAccountIdentifier()
+        if currentAccountIdentifier != observedAccountIdentifier {
+            observedAccountIdentifier = currentAccountIdentifier
+            await refreshAfterAccountChange()
+            return
+        }
+
+        guard autoRefreshEnabled else { return }
+        scheduleActivityRefresh()
+    }
+
+    private func invalidateCurrentRefresh() {
+        refreshID = nil
+        refreshTask?.cancel()
+        refreshTask = nil
     }
 }

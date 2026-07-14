@@ -11,8 +11,12 @@ struct UsagePopoverView: View {
             header
 
             if let usage = refreshService.state.latestUsage {
-                UsageCardView(window: usage.fiveHour, language: language)
-                UsageCardView(window: usage.weekly, language: language)
+                if let fiveHour = usage.fiveHour {
+                    UsageCardView(window: fiveHour, language: language)
+                }
+                if let weekly = usage.weekly {
+                    UsageCardView(window: weekly, language: language)
+                }
                 
                 VStack(alignment: .leading, spacing: 10) {
                     detailRow(title: L(.lastUpdated, language), value: DateFormatter.usageTimestamp.string(from: usage.updatedAt))

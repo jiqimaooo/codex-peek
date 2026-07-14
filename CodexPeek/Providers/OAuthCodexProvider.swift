@@ -56,7 +56,10 @@ struct OAuthCodexProvider: CodexUsageProvider {
             switch httpResponse.statusCode {
             case 200:
                 let payload = try decoder.decode(CodexUsageAPIResponse.self, from: data)
-                return try payload.toCodexUsage(source: sourceName)
+                return try payload.toCodexUsage(
+                    source: sourceName,
+                    expectedUserId: auth.tokens?.userId
+                )
             case 401:
                 throw UsageError.notLoggedIn
             case 403:
@@ -75,36 +78,49 @@ struct OAuthCodexProvider: CodexUsageProvider {
 }
 
 private struct CodexUsageAPIResponse: Decodable {
+    let accountId: String?
+    let userId: String?
     let rateLimit: RateLimitDetails?
 
     enum CodingKeys: String, CodingKey {
+        case accountId = "account_id"
+        case userId = "user_id"
         case rateLimit = "rate_limit"
     }
 
-    func toCodexUsage(source: String) throws -> CodexUsage {
+    func toCodexUsage(source: String, expectedUserId: String?) throws -> CodexUsage {
+        let responseUserId = userId ?? accountId
+        if let expectedUserId,
+           let responseUserId,
+           expectedUserId != responseUserId {
+            throw UsageError.invalidResponse("接口返回的账号与当前 Codex 登录账号不一致。")
+        }
+
         let normalized = RateWindowNormalizer.normalize(
             primary: rateLimit?.primaryWindow?.toWindow(),
             secondary: rateLimit?.secondaryWindow?.toWindow()
         )
-        guard let fiveHourWindow = normalized.primary,
-              let weeklyWindow = normalized.secondary
-        else {
-            throw UsageError.invalidResponse("响应中缺少 Codex 5 小时或周用量窗口。")
+        guard normalized.primary != nil || normalized.secondary != nil else {
+            throw UsageError.invalidResponse("响应中没有可用的 Codex 用量窗口。")
         }
 
         let now = Date()
-        let fiveHour = UsageWindow(
-            kind: .fiveHours,
-            usedPercent: fiveHourWindow.usedPercent,
-            resetsAt: fiveHourWindow.resetsAt,
-            totalDescription: fiveHourWindow.totalDescription
-        )
-        let weekly = UsageWindow(
-            kind: .weekly,
-            usedPercent: weeklyWindow.usedPercent,
-            resetsAt: weeklyWindow.resetsAt,
-            totalDescription: weeklyWindow.totalDescription
-        )
+        let fiveHour = normalized.primary.map {
+            UsageWindow(
+                kind: .fiveHours,
+                usedPercent: $0.usedPercent,
+                resetsAt: $0.resetsAt,
+                totalDescription: $0.totalDescription
+            )
+        }
+        let weekly = normalized.secondary.map {
+            UsageWindow(
+                kind: .weekly,
+                usedPercent: $0.usedPercent,
+                resetsAt: $0.resetsAt,
+                totalDescription: $0.totalDescription
+            )
+        }
 
         return CodexUsage(
             fiveHour: fiveHour,

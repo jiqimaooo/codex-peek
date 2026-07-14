@@ -15,6 +15,11 @@ let package = Package(
             name: "CodexPeek",
             path: "CodexPeek",
             exclude: ["App/Info.plist"]
+        ),
+        .testTarget(
+            name: "CodexPeekTests",
+            dependencies: ["CodexPeek"],
+            path: "Tests/CodexPeekTests"
         )
     ]
 )
